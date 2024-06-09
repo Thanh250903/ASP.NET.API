@@ -25,6 +25,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Add repositories and dependency injection // inject repository vào code
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+// Add UnitOfWork dependency ProductRepository and CategoryRepository
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 
 // Add AutoMapper // ánh xạ dữ liệu
 builder.Services.AddAutoMapper(typeof(Startup));

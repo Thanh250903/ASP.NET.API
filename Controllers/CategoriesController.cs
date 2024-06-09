@@ -1,5 +1,4 @@
 ﻿// CategoriesController.cs
-// CategoriesController.cs
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -12,26 +11,26 @@ using WebAPI.Models;
 [ApiController]
 public class CategoriesController : ControllerBase
 {
-    private readonly ICategoryRepository _categoryRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
-    public CategoriesController(ICategoryRepository categoryRepository, IMapper mapper)
+    public CategoriesController(IUnitOfWork unitOfWork, IMapper mapper)
     {
-        _categoryRepository = categoryRepository;
+        _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoryDto>>> GetCategories()
     {
-        var categories = await _categoryRepository.GetAllCategories();
+        var categories = await _unitOfWork.Categories.GetAllCategories();
         return _mapper.Map<List<CategoryDto>>(categories);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<CategoryDto>> GetCategory(int id)
     {
-        var category = await _categoryRepository.GetCategoryById(id);
+        var category = await _unitOfWork.Categories.GetCategoryById(id);
 
         if (category == null)
         {
@@ -45,7 +44,8 @@ public class CategoriesController : ControllerBase
     public async Task<ActionResult<CategoryDto>> PostCategory(CategoryDto categoryDto)
     {
         var category = _mapper.Map<Category>(categoryDto);
-        var addedCategory = await _categoryRepository.AddCategory(category);
+        var addedCategory = await _unitOfWork.Categories.AddCategory(category);
+        await _unitOfWork.SaveChangesAsync();
         return CreatedAtAction(nameof(GetCategory), new { id = addedCategory.Id }, _mapper.Map<CategoryDto>(addedCategory));
     }
 
@@ -57,14 +57,14 @@ public class CategoriesController : ControllerBase
             return BadRequest();
         }
 
-        var existingCategory = await _categoryRepository.GetCategoryById(id);
+        var existingCategory = await _unitOfWork.Categories.GetCategoryById(id);
         if (existingCategory == null)
         {
             return NotFound();
         }
 
         _mapper.Map(categoryDto, existingCategory);
-        var updatedCategory = await _categoryRepository.UpdateCategory(existingCategory);
+        await _unitOfWork.SaveChangesAsync();
 
         return NoContent();
     }
@@ -72,15 +72,16 @@ public class CategoriesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
-        var category = await _categoryRepository.GetCategoryById(id);
+        var category = await _unitOfWork.Categories.GetCategoryById(id);
         if (category == null)
         {
             return NotFound();
         }
 
-        var deleted = await _categoryRepository.DeleteCategory(id);
+        var deleted = await _unitOfWork.Categories.DeleteCategory(id);
         if (deleted)
         {
+            await _unitOfWork.SaveChangesAsync();
             return NoContent();
         }
         else

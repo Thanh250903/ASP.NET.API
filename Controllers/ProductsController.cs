@@ -1,5 +1,4 @@
 ﻿// ProductsController.cs
-// ProductsController.cs
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -12,26 +11,26 @@ using WebAPI.Models;
 [ApiController]
 public class ProductsController : ControllerBase
 {
-    private readonly IProductRepository _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
-    public ProductsController(IProductRepository productRepository, IMapper mapper)
+    public ProductsController(IUnitOfWork unitOfWork, IMapper mapper)
     {
-        _productRepository = productRepository;
+        _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
     {
-        var products = await _productRepository.GetAllProducts();
+        var products = await _unitOfWork.Products.GetAllProducts();
         return _mapper.Map<List<ProductDto>>(products);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ProductDto>> GetProduct(int id)
     {
-        var product = await _productRepository.GetProductById(id);
+        var product = await _unitOfWork.Products.GetProductById(id);
 
         if (product == null)
         {
@@ -45,7 +44,8 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<ProductDto>> PostProduct(ProductDto productDto)
     {
         var product = _mapper.Map<Product>(productDto);
-        var addedProduct = await _productRepository.AddProduct(product);
+        var addedProduct = await _unitOfWork.Products.AddProduct(product);
+        await _unitOfWork.SaveChangesAsync();
         return CreatedAtAction(nameof(GetProduct), new { id = addedProduct.Id }, _mapper.Map<ProductDto>(addedProduct));
     }
 
@@ -57,14 +57,14 @@ public class ProductsController : ControllerBase
             return BadRequest();
         }
 
-        var existingProduct = await _productRepository.GetProductById(id);
+        var existingProduct = await _unitOfWork.Products.GetProductById(id);
         if (existingProduct == null)
         {
             return NotFound();
         }
 
         _mapper.Map(productDto, existingProduct);
-        var updatedProduct = await _productRepository.UpdateProduct(existingProduct);
+        await _unitOfWork.SaveChangesAsync();
 
         return NoContent();
     }
@@ -72,15 +72,16 @@ public class ProductsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
-        var product = await _productRepository.GetProductById(id);
+        var product = await _unitOfWork.Products.GetProductById(id);
         if (product == null)
         {
             return NotFound();
         }
 
-        var deleted = await _productRepository.DeleteProduct(id);
+        var deleted = await _unitOfWork.Products.DeleteProduct(id);
         if (deleted)
         {
+            await _unitOfWork.SaveChangesAsync();
             return NoContent();
         }
         else
