@@ -10,8 +10,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using WebAPI.Interfaces;
+using AspNetCoreRateLimit;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // Add services to the container.
 
@@ -42,6 +44,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Configure rate limiting options, giới hạn thời gian truy cập
+
+
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+
+
+// Add rate limiting middleware
+builder.Services.AddMemoryCache(); // Add the IMemoryCache service here
+builder.Services.AddInMemoryRateLimiting();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+
 builder.Services.AddControllers();
 var app = builder.Build();
 
@@ -51,6 +68,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseIpRateLimiting();
+// The rest of the middleware
 
 app.UseHttpsRedirection();
 
